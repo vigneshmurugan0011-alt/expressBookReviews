@@ -1,5 +1,6 @@
 
 const express = require('express');
+const axios = require('axios');
 const books = require('./booksdb.js');
 const { isValid, users } = require('./auth_users.js');
 
@@ -28,45 +29,61 @@ public_users.post('/register', (req, res) => {
   });
 });
 
-// Get all available books
+// Get all books
 public_users.get('/', (req, res) => {
   return res.status(200).json(books);
 });
 
-// Get book by ISBN
-public_users.get('/isbn/:isbn', (req, res) => {
-  const book = books[req.params.isbn];
+// Get book by ISBN using Axios and async/await
+public_users.get('/isbn/:isbn', async (req, res) => {
+  try {
+    const response = await axios.get('http://localhost:5000/');
+    const book = response.data[req.params.isbn];
 
-  if (!book) {
-    return res.status(404).json({ message: 'Book not found' });
+    if (!book) {
+      return res.status(404).json({ message: 'Book not found' });
+    }
+
+    return res.status(200).json(book);
+  } catch (error) {
+    return res.status(500).json({ message: 'Unable to retrieve books' });
   }
-
-  return res.status(200).json(book);
 });
 
-// Get books by author
+// Get books by author using Axios and promises
 public_users.get('/author/:author', (req, res) => {
-  const author = req.params.author.toLowerCase();
+  axios.get('http://localhost:5000/')
+    .then(response => {
+      const author = req.params.author.toLowerCase();
 
-  const matchingBooks = Object.values(books).filter(book =>
-    book.author && book.author.toLowerCase().includes(author)
-  );
+      const matchingBooks = Object.values(response.data).filter(book =>
+        book.author && book.author.toLowerCase().includes(author)
+      );
 
-  return res.status(200).json(matchingBooks);
+      return res.status(200).json(matchingBooks);
+    })
+    .catch(() => {
+      return res.status(500).json({ message: 'Unable to retrieve books' });
+    });
 });
 
-// Get books by title
-public_users.get('/title/:title', (req, res) => {
-  const title = req.params.title.toLowerCase();
+// Get books by title using Axios and async/await
+public_users.get('/title/:title', async (req, res) => {
+  try {
+    const response = await axios.get('http://localhost:5000/');
+    const title = req.params.title.toLowerCase();
 
-  const matchingBooks = Object.values(books).filter(book =>
-    book.title && book.title.toLowerCase().includes(title)
-  );
+    const matchingBooks = Object.values(response.data).filter(book =>
+      book.title && book.title.toLowerCase().includes(title)
+    );
 
-  return res.status(200).json(matchingBooks);
+    return res.status(200).json(matchingBooks);
+  } catch (error) {
+    return res.status(500).json({ message: 'Unable to retrieve books' });
+  }
 });
 
-// Get reviews for a book by ISBN
+// Get reviews by ISBN
 public_users.get('/review/:isbn', (req, res) => {
   const book = books[req.params.isbn];
 
