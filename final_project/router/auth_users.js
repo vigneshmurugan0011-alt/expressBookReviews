@@ -17,7 +17,7 @@ const authenticatedUser = (username, password) => {
   );
 };
 
-// Login for registered users
+// User login
 regd_users.post('/login', (req, res) => {
   const { username, password } = req.body;
 
@@ -33,11 +33,9 @@ regd_users.post('/login', (req, res) => {
     });
   }
 
-  const accessToken = jwt.sign(
-    { username },
-    'access',
-    { expiresIn: '1h' }
-  );
+  const accessToken = jwt.sign({ username }, 'access', {
+    expiresIn: '1h'
+  });
 
   return res.status(200).json({
     message: 'User successfully logged in',
@@ -45,34 +43,55 @@ regd_users.post('/login', (req, res) => {
   });
 });
 
-// Add or update a book review
+// Add or update a review for the logged-in user
 regd_users.put('/auth/review/:isbn', (req, res) => {
   const isbn = req.params.isbn;
-  const username = req.body.username || req.query.username;
+  const username = req.user && req.user.username;
   const review = req.body.review || req.query.review;
 
-  if (!username || !review) {
-    return res.status(400).json({
-      message: 'Username and review are required'
-    });
+  if (!username) {
+    return res.status(401).json({ message: 'Unauthorized' });
   }
 
-  if (!isValid(username)) {
-    return res.status(401).json({
-      message: 'Please register before adding a review'
-    });
+  if (!review) {
+    return res.status(400).json({ message: 'Review is required' });
   }
 
   if (!books[isbn]) {
-    return res.status(404).json({
-      message: 'Book not found'
-    });
+    return res.status(404).json({ message: 'Book not found' });
   }
 
   books[isbn].reviews[username] = review;
 
   return res.status(200).json({
     message: 'Review added or updated successfully',
+    reviews: books[isbn].reviews
+  });
+});
+
+// Delete the logged-in user's review
+regd_users.delete('/auth/review/:isbn', (req, res) => {
+  const isbn = req.params.isbn;
+  const username = req.user && req.user.username;
+
+  if (!username) {
+    return res.status(401).json({ message: 'Unauthorized' });
+  }
+
+  if (!books[isbn]) {
+    return res.status(404).json({ message: 'Book not found' });
+  }
+
+  if (!Object.prototype.hasOwnProperty.call(books[isbn].reviews, username)) {
+    return res.status(404).json({
+      message: 'No review found for this user'
+    });
+  }
+
+  delete books[isbn].reviews[username];
+
+  return res.status(200).json({
+    message: 'Review deleted successfully',
     reviews: books[isbn].reviews
   });
 });
